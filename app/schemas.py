@@ -1,10 +1,9 @@
 from datetime import datetime
 from pydantic import BaseModel
 from pydantic import EmailStr
-from enum import Enum
 from typing import Literal
+from typing import Optional
 
-from app import models
 
 
 class PostBase(BaseModel):
@@ -73,7 +72,7 @@ class Token(BaseModel):
     token_type: str
 
 class TokenData(BaseModel):
-    id: str | None = None
+    id: Optional[str] = None
 
 class Vote(BaseModel):
     post_id: int

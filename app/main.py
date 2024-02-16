@@ -75,6 +75,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 # Path Operation for the root endpoint
 @app.get("/")
 def root():
-    return {"message": "Hello World!!!!!!!!"}
+    return {"message": "Hello world!"}
 
 

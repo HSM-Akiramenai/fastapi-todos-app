@@ -1,5 +1,6 @@
 
 from pydantic_settings import BaseSettings
+import os
 
 
 class Settings(BaseSettings):
@@ -13,6 +14,6 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int 
 
     class Config:
-        env_file = ".env"
+        env_file = ".env.prod" if os.getenv('APP_ENV') == 'prod' else ".env.dev"
 
 settings = Settings()
