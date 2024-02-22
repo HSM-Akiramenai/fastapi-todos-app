@@ -3,3 +3,4 @@ venv/
 .env.dev
 .env.prod
 logs/
+.pytest_cache/

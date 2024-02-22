@@ -55,62 +55,38 @@ def create_posts(post: schemas.PostCreate,
 
 
 # Path Operation to get a specific post by ID
-@router.get("/{id}", 
-            response_model=schemas.PostResponse)
+@router.get("/{id}", response_model=schemas.PostResponse)
 def get_post(id: int, 
              db: Session = Depends(get_db),
              current_user: int = Depends(oauth2.get_current_user)):
-    # post = db.query(models.Post).filter(models.Post.id == id).first()
+    result = db.query(models.Post, func.count(models.Vote.user_id).label("votes")) \
+        .join(models.Vote, models.Vote.post_id == models.Post.id, isouter=True) \
+        .group_by(models.Post.id) \
+        .filter(models.Post.id == id) \
+        .first()
 
-    try:
-        result = db.query(models.Post, func.count(models.Vote.user_id).label("votes")).join(models.Vote, models.Vote.post_id == models.Post.id, isouter=True).group_by(models.Post.id).filter(models.Post.id == id).first()
-
-        if not result:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Post with id: '{id}' was not found.") 
-        
-        post, votes = result
-    
-        if post.owner_id != current_user.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Not authorized to view this post.") 
-
-        post_data = post.__dict__
-        post_data.update({
-            'owner': {
-                'first_name': post.owner.first_name,
-                'last_name': post.owner.last_name,
-                'email': post.owner.email,
-            },
-            'votes': votes
-        })
-        
-        post_response = schemas.PostResponse.model_validate(post_data)    
-
-        return post_response
-    
-        # return schemas.PostResponse(
-        #             id=post.id,
-        #             title=post.title,
-        #             content=post.content,
-        #             published=post.published,
-        #             created_at=post.created_at,
-        #             owner_id=post.owner_id,
-        #             owner=schemas.UserBase(
-        #                 first_name=post.owner.first_name,
-        #                 last_name=post.owner.last_name,
-        #                 email=post.owner.email
-        #             ),
-        #             votes=votes
-        #         )
-
-    except Exception as e:
+    if not result:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An error occurred: {str(e)}")
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Post with id: '{id}' was not found.") 
 
+    post, votes = result
+
+    if post.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to view this post.") 
+
+    # Create response model directly from SQLAlchemy model and additional data
+    return schemas.PostResponse(
+        **post.__dict__,
+        owner=schemas.UserBase(
+            first_name=post.owner.first_name,
+            last_name=post.owner.last_name,
+            email=post.owner.email
+        ),
+        votes=votes
+    )
 
 # Path Operation to delete a post by ID
 @router.delete("/{id}", 
@@ -136,7 +112,7 @@ def delete_post(id: int,
 
 # Path Operation to update a post by ID
 @router.put("/{id}",
-            status_code=status.HTTP_201_CREATED, 
+            status_code=status.HTTP_200_OK, 
             response_model=schemas.PostOut)
 def update_post(id: int, 
                 updated_post: schemas.PostCreate, 
